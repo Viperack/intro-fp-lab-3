@@ -11,14 +11,17 @@ Lab group   : 31
 -}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use newtype instead of data" #-}
+{-# HLINT ignore "Use uncurry" #-}
+{-# HLINT ignore "Use bimap" #-}
 
 module Shapes where
 
 import Data.List (transpose)
-import Data.Maybe (isNothing)
+import Data.Maybe (isNothing, isJust)
 import Test.QuickCheck
 import Control.Applicative (Alternative(empty))
 import GHC.CmmToAsm.X86.Regs (r10, r12)
+import Data.Bool (Bool(True))
 
 -- * Shapes
 
@@ -121,13 +124,13 @@ prop_Shape rs = prop_Shape_size rs && prop_Shape_rect rs
 
 -- Checks that there is at least 1 row and 1 column
 prop_Shape_size :: Shape -> Bool
-prop_Shape_size (Shape rs) = not (null rs) && not (null (head rs)) 
+prop_Shape_size (Shape rs) = not (null rs) && not (null (head rs))
 
 -- Checks that all the rows are of the same length
 prop_Shape_rect :: Shape -> Bool
 prop_Shape_rect (Shape (r1:r2:rs)) = length r1 == length r2
  && prop_Shape_rect (Shape (r2:rs))
-prop_Shape_rect _ = True
+prop_Shape_rect _                  = True
 
 -- * Test data generators
 
@@ -160,7 +163,7 @@ shiftShape :: (Int, Int) -> Shape -> Shape
 shiftShape (n1, n2) s = shiftShapeTop n1 (shiftShapeLeft n2 s)
 
 shiftShapeTop :: Int -> Shape -> Shape
-shiftShapeTop n (Shape rs) = Shape (rows (emptyShape (n, length (head rs))) 
+shiftShapeTop n (Shape rs) = Shape (rows (emptyShape (n, length (head rs)))
  ++ rs)
 
 shiftShapeLeft :: Int -> Shape -> Shape
@@ -174,8 +177,8 @@ padShape :: (Int, Int) -> Shape -> Shape
 padShape (n1, n2) s = padShapeBottom n1 (padShapeRight n2 s)
 
 padShapeBottom :: Int -> Shape -> Shape
-padShapeBottom n (Shape rs) = Shape (rs 
- ++ rows (emptyShape (n, length (head rs))) 
+padShapeBottom n (Shape rs) = Shape (rs
+ ++ rows (emptyShape (n, length (head rs)))
    )
 
 padShapeRight :: Int -> Shape -> Shape
@@ -188,7 +191,7 @@ padShapeRight n (Shape rs) = Shape [ shiftRowRight r | r <- rs ]
 padShapeTo :: (Int, Int) -> Shape -> Shape
 padShapeTo (n1, n2) s = padShape (n1 - fst size, n2 - snd size ) s
  where
-  size = shapeSize s 
+  size = shapeSize s
 
 -- * Comparing and combining shapes
 
@@ -196,12 +199,26 @@ padShapeTo (n1, n2) s = padShape (n1 - fst size, n2 - snd size ) s
 
 -- | Test if two shapes overlap
 overlaps :: Shape -> Shape -> Bool
-s1 `overlaps` s2 = error "A11 overlaps undefined"
+overlaps s1 s2 = or [rowsOverlap r1 r2
+                     | (r1, r2) <- zip (rows s1) (rows s2)]
+
+rowsOverlap :: Row -> Row -> Bool
+rowsOverlap r1 r2 = or [isJust sq1 && isJust sq2 | (sq1, sq2) <- zip r1 r2]
+
 
 -- ** B2
 -- | zipShapeWith, like 'zipWith' for lists
 zipShapeWith :: (Square -> Square -> Square) -> Shape -> Shape -> Shape
-zipShapeWith = error "A12 zipShapeWith undefined"
+zipShapeWith f s1 s2 = [zipRowWith f r1 r2
+                        | (r1, r2) <- zip (rows s1) (rows s2)]
+
+zipRowWith :: (Square -> Square -> Square) -> Row -> Row -> Row
+zipRowWith f r1 r2 = [f sq1 sq2 | (sq1, sq2) <- zip r1 r2]
+
+f :: Square -> Square -> Square
+f = undefined
+
+
 
 -- ** B3
 -- | Combine two shapes. The two shapes should not overlap.
