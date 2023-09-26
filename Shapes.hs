@@ -9,10 +9,6 @@ Stability   : experimental
 Authors     : Theodor Köhler, Daniel Rising, Ludvig Ingolfson
 Lab group   : 31
 -}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Use newtype instead of data" #-}
-{-# HLINT ignore "Use uncurry" #-}
-{-# HLINT ignore "Use bimap" #-}
 
 module Shapes where
 
@@ -209,19 +205,20 @@ rowsOverlap r1 r2 = or [isJust sq1 && isJust sq2 | (sq1, sq2) <- zip r1 r2]
 -- ** B2
 -- | zipShapeWith, like 'zipWith' for lists
 zipShapeWith :: (Square -> Square -> Square) -> Shape -> Shape -> Shape
-zipShapeWith f s1 s2 = [zipRowWith f r1 r2
-                        | (r1, r2) <- zip (rows s1) (rows s2)]
+zipShapeWith f s1 s2 = Shape [zipRowWith f r1 r2 | (r1, r2) <-
+                              zip (rows s1) (rows s2)]
 
 zipRowWith :: (Square -> Square -> Square) -> Row -> Row -> Row
 zipRowWith f r1 r2 = [f sq1 sq2 | (sq1, sq2) <- zip r1 r2]
 
-f :: Square -> Square -> Square
-f = undefined
-
-
-
 -- ** B3
 -- | Combine two shapes. The two shapes should not overlap.
 -- The resulting shape will be big enough to fit both shapes.
+
 combine :: Shape -> Shape -> Shape
-s1 `combine` s2 = error "A13 zipShapeWith undefined"
+s1 `combine` s2 = zipShapeWith firstJust s1' s2' where
+  s1' = padShapeTo (shapeSize s2) s1
+  s2' = padShapeTo (shapeSize s1) s2
+
+  firstJust sq1 sq2 | isJust sq1 = sq1
+                    | otherwise = sq2

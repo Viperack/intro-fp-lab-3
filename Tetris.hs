@@ -6,14 +6,14 @@ License     : BSD
 Maintainer  : alexg@chalmers.se
 Stability   : experimental
 
-Authors     : <list your names here>
-Lab group   : <group number>
+Authors     : Theodor Köhler, Daniel Rising, Ludvig Ingolfson
+Lab group   : 31
 -}
 
 module Main where
 
 import ConsoleGUI
--- import ThreepennyGUI  -- either use ConsoleGUI or ThreepennyGUI
+--import ThreepennyGUI  -- either use ConsoleGUI or ThreepennyGUI
 
 import Shapes
 
@@ -23,13 +23,13 @@ main :: IO ()
 main = runGame tetrisGame
 
 tetrisGame :: Game Tetris
-tetrisGame = Game 
+tetrisGame = Game
   { startGame     = startTetris
   , stepGame      = stepTetris
   , drawGame      = drawTetris
   , gameInfo      = defaultGameInfo prop_Tetris
   , tickDelay     = defaultDelay
-  , gameInvariant = prop_Tetris 
+  , gameInvariant = prop_Tetris
   }
 
 --------------------------------------------------------------------------------
@@ -39,7 +39,7 @@ type Piece = (Pos, Shape)
 type Pos   = (Int, Int)
 
 -- | The state of the game consists of three parts:
-data Tetris = Tetris 
+data Tetris = Tetris
   { piece  :: Piece    -- ^ The position and shape of the falling piece
   , well   :: Shape    -- ^ The well (the playing field), where the falling pieces pile up
   , shapes :: [Shape]  -- ^ An infinite supply of random shapes
@@ -67,16 +67,26 @@ place (v, s) = shiftShape v s
 
 -- | An invariant that startTetris and stepTetris should uphold
 prop_Tetris :: Tetris -> Bool
-prop_Tetris t = True -- incomplete !!!
+prop_Tetris t = prop_piece && prop_Well where
+  prop_piece = prop_Shape (snd (piece t))
+  prop_Well = shapeSize (well t) == wellSize
 
 -- | Add black walls around a shape
 addWalls :: Shape -> Shape
-addWalls s = s -- incomplete !!!
+addWalls s = addWallsTopBottom (addWallsSides s)
+
+addWallsTopBottom :: Shape -> Shape
+addWallsTopBottom (Shape rs) = Shape ([r] ++ rs ++ [r]) where
+  r = blackRow (length (head rs))
+  blackRow n = replicate n (Just Black)
+
+addWallsSides :: Shape -> Shape
+addWallsSides (Shape rs) = Shape [[Just Black] ++ r ++ [Just Black] | r <- rs]
 
 -- | Visualize the current game state. This is what the user will see
 -- when playing the game.
 drawTetris :: Tetris -> Shape
-drawTetris (Tetris (v, p) w _) = w -- incomplete !!!
+drawTetris (Tetris (v, p) w _) = addWalls (combine w (shiftShape v p))
 
 -- | The initial game state
 startTetris :: [Double] -> Tetris
@@ -88,4 +98,10 @@ startTetris rs = Tetris (startPosition, piece) well supply
 -- | React to input. The function returns 'Nothing' when it's game over,
 -- and @'Just' (n,t)@, when the game continues in a new state @t@.
 stepTetris :: Action -> Tetris -> Maybe (Int, Tetris)
-stepTetris action t = Just (0, t) -- incomplete !!!
+stepTetris Tick = tick
+
+move :: (Int, Int) -> Tetris -> Tetris
+move p' (Tetris (p, s) w ss) = Tetris (p `add` p', s) w ss
+
+tick :: Tetris -> Maybe (Int, Tetris)
+tick t = Just (0, move (1, 0) t)
