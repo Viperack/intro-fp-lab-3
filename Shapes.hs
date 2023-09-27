@@ -89,7 +89,7 @@ emptyRow n = replicate n Nothing
 
 -- ** A2
 
--- | The size (width and height) of a shape
+-- | The size (height and width) of a shape
 shapeSize :: Shape -> (Int, Int)
 shapeSize (Shape rs) = (length rs, length (head rs))
 
@@ -106,9 +106,13 @@ countElem _ [] = 0
 countElem x (e:es) | x == e    = countElem x es + 1
                    | otherwise = countElem x es
 
--- Quicker solution for all tetrominoes
--- blockCount :: Int
--- blockCount = 4
+-- Alternative 1: using list comprehension
+blockCount' :: Shape -> Int
+blockCount' (Shape rs) = length [sq | r <- rs, sq <- r, isJust sq]
+
+-- Alternative 2: Using |filter| and |concat|
+blockCount'' :: Shape -> Int
+blockCount'' (Shape rs) = length (filter isJust (concat rs))
 
 -- * The Shape invariant
 
@@ -127,6 +131,10 @@ prop_Shape_rect :: Shape -> Bool
 prop_Shape_rect (Shape (r1:r2:rs)) = length r1 == length r2
  && prop_Shape_rect (Shape (r2:rs))
 prop_Shape_rect _                  = True
+
+-- Alternative 1: Using |all|
+prop_Shape_rect' :: Shape -> Bool
+prop_Shape_rect' (Shape rs) = all (\r -> length r == length (head rs)) (concat rs)
 
 -- * Test data generators
 
