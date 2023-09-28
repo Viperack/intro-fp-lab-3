@@ -12,7 +12,7 @@ Lab group   : 31
 
 module Shapes where
 
-import Data.List (transpose)
+import Data.List (transpose, zipWith)
 import Data.Maybe (isNothing, isJust)
 import Test.QuickCheck
 import Control.Applicative (Alternative(empty))
@@ -213,11 +213,7 @@ rowsOverlap r1 r2 = or [isJust sq1 && isJust sq2 | (sq1, sq2) <- zip r1 r2]
 -- ** B2
 -- | zipShapeWith, like 'zipWith' for lists
 zipShapeWith :: (Square -> Square -> Square) -> Shape -> Shape -> Shape
-zipShapeWith f s1 s2 = Shape [zipRowWith f r1 r2 | (r1, r2) <-
-                              zip (rows s1) (rows s2)]
-
-zipRowWith :: (Square -> Square -> Square) -> Row -> Row -> Row
-zipRowWith f r1 r2 = [f sq1 sq2 | (sq1, sq2) <- zip r1 r2]
+zipShapeWith f (Shape rs1) (Shape rs2) = Shape $ zipWith (zipWith f) rs1 rs2
 
 -- ** B3
 -- | Combine two shapes. The two shapes should not overlap.
