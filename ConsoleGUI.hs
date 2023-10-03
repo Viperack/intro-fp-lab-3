@@ -116,17 +116,17 @@ readAction = do
   c <- getCh
   case c of
     '\n'-> return (Right MoveDown)
-    ' ' -> return (Right MoveDown)
-    'j' -> return (Right MoveLeft)
-    'l' -> return (Right MoveRight)
-    'k' -> return (Right Rotate)
+    's' -> return (Right MoveDown)
+    'a' -> return (Right MoveLeft)
+    'd' -> return (Right MoveRight)
+    'w' -> return (Right Rotate)
     'p' -> return (Left Pause)
     'q' -> return (Left Quit)
     _   -> readAction
 
 keys :: [String]
-keys = [ "J = Left", "K = Rotate", "L = Right"
-       , "P = Pause", "sp = Down", "Q = Quit" ]
+keys = [ "A = Left", "W = Rotate", "D = Right"
+       , "P = Pause", "S = Down", "Q = Quit" ]
 
 data OtherAction = Pause | Quit deriving Eq
 
