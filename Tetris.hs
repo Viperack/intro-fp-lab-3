@@ -68,13 +68,17 @@ add :: Pos -> Pos -> Pos
 place :: (Pos, Shape) -> Shape
 place (v, s) = shiftShape v s
 
+-- ** B4, C1
+
 -- | An invariant that startTetris and stepTetris should uphold
 prop_Tetris :: Tetris -> Bool
 prop_Tetris t = prop_piece && prop_well && prop_collision where
   prop_piece      = prop_Shape $ snd $ piece t
   prop_well       = shapeSize (well t) == wellSize
   prop_collision  = not $ collision t
-  
+
+-- ** B5
+
 -- | Add black walls around a shape
 addWalls :: Shape -> Shape
 addWalls s = addWallsTopBottom $ addWallsSides s
@@ -87,10 +91,14 @@ addWallsTopBottom (Shape rs) = Shape ([r] ++ rs ++ [r]) where
 addWallsSides :: Shape -> Shape
 addWallsSides (Shape rs) = Shape [[Just Black] ++ r ++ [Just Black] | r <- rs]
 
+-- ** B6
+
 -- | Visualize the current game state. This is what the user will see
 -- when playing the game.
 drawTetris :: Tetris -> Shape
 drawTetris (Tetris (v, p) w _) = addWalls $ combine w $ shiftShape v p
+
+-- ** C8
 
 -- | The initial game state
 startTetris :: [Double] -> Tetris
@@ -101,6 +109,8 @@ startTetris rs = Tetris (startPosition, piece) well supply
   getIndex 1.0 = length allShapes - 1 -- Extremely unlikely edge case
   getIndex d    = floor $ d * (fromIntegral $ length allShapes)
 
+-- ** C2, C3, C6
+
 -- | React to input. The function returns 'Nothing' when it's game over,
 -- and @'Just' (n,t)@, when the game continues in a new state @t@.
 stepTetris :: Action -> Tetris -> Maybe (Int, Tetris)
@@ -110,14 +120,20 @@ stepTetris MoveLeft t   = Just (0, movePiece (-1) t)
 stepTetris MoveRight t  = Just (0, movePiece 1 t)
 stepTetris Rotate t     = Just (0, rotatePiece t)
 
+-- ** B7
+
 move :: (Int, Int) -> Tetris -> Tetris
 move p' (Tetris (p, s) w ss) = Tetris (p `add` p', s) w ss
+
+-- ** B8, C7
 
 tick :: Tetris -> Maybe (Int, Tetris)
 tick t  | collision newState = dropNewPiece t
         | otherwise = Just (0, newState)
   where
     newState = move (1, 0) t
+
+-- ** C1
 
 -- Falling piece collision
 collision :: Tetris -> Bool
@@ -127,6 +143,8 @@ collision (Tetris ((y, x), s) w _) = or
     fst (shapeSize s) + y > wellHeight, -- With floor
     overlaps w (place ((y, x), s)) ]    -- With well
 
+-- ** C3
+
 -- Moves the falling piece in game state (Tetris type) & checks for collision
 movePiece :: Int -> Tetris -> Tetris
 movePiece x t
@@ -135,9 +153,13 @@ movePiece x t
  where
   newState = move (0, x) t
 
+-- ** C4
+
 -- Rotates the falling piece (counter clock-wise) 
 rotate :: Tetris -> Tetris
 rotate (Tetris (p, s) w ss) = Tetris (p, rotateShape s) w ss
+
+-- ** C5
 
 -- Moves a piece left until it is inside wellWidth
 adjust :: Tetris -> Tetris
@@ -150,12 +172,16 @@ adjust t
     newState = move (0, -1) t
     (Tetris ((_, x), _) _ _) = t
 
+-- ** C6
+
 -- Rotates, adjusts (read adjust) and checks for collision
 rotatePiece :: Tetris -> Tetris
 rotatePiece t | collision newState  = t
               | otherwise           = newState
   where
     newState = adjust (rotate t)
+
+-- ** C7, C10
 
 {- Combines current falling piece with well, takes new falling piece, clears
    completed lines & checks if game is over -}
@@ -167,6 +193,8 @@ dropNewPiece (Tetris p w (s:ss))
     newState      = Tetris newPiece newWell ss
     newPiece      = (startPosition, s)
     (n, newWell)  = clearLines $ combine (place p) w -- n: nr. of cleared lines
+
+-- ** C9
 
 -- Removes (& counts) full lines and adds same amount of (empty) lines on top
 clearLines :: Shape -> (Int, Shape)
