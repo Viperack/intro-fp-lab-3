@@ -98,7 +98,7 @@ startTetris rs = Tetris (startPosition, piece) well supply
  where
   well          = emptyShape wellSize
   piece:supply  = [allShapes !! (getIndex r) | r <- rs]
-  getIndex 1.0 = length allShapes - 1 -- Extremely unlikely special case
+  getIndex 1.0 = length allShapes - 1 -- Extremely unlikely edge case
   getIndex d    = floor $ d * (fromIntegral $ length allShapes)
 
 -- | React to input. The function returns 'Nothing' when it's game over,
@@ -119,53 +119,58 @@ tick t  | collision newState = dropNewPiece t
   where
     newState = move (1, 0) t
 
+-- Falling piece collision
 collision :: Tetris -> Bool
-collision (Tetris ((y, x), s) w _) 
-  | x < 0                               = True
-  | snd (shapeSize s) + x > wellWidth   = True
-  | fst (shapeSize s) + y > wellHeight  = True
-  | overlaps w (place ((y, x), s))      = True
-  | otherwise                           = False
+collision (Tetris ((y, x), s) w _) = or 
+  [ x < 0,                              -- With left wall
+    snd (shapeSize s) + x > wellWidth,  -- With right wall
+    fst (shapeSize s) + y > wellHeight, -- With floor
+    overlaps w (place ((y, x), s)) ]    -- With well
 
+-- Moves the falling piece in game state (Tetris type) & checks for collision
 movePiece :: Int -> Tetris -> Tetris
-movePiece x t | collision newState  = t
-              | otherwise           = newState
+movePiece x t
+  | collision newState  = t
+  | otherwise           = newState
  where
   newState = move (0, x) t
 
+-- Rotates the falling piece (counter clock-wise) 
 rotate :: Tetris -> Tetris
 rotate (Tetris (p, s) w ss) = Tetris (p, rotateShape s) w ss
 
+-- Moves a piece left until it is inside wellWidth
 adjust :: Tetris -> Tetris
-adjust (Tetris ((y, x), s) w ss)
-  | x < 0                             = adjustDir 1
-  | snd (shapeSize s) + x > wellWidth = adjustDir (-1)
-  | otherwise                         = Tetris ((y, x), s) w ss
+adjust t
+  | x == 0              = t               -- Don't move outside bounds
+  | collision newState  = adjust newState -- Still outside, go recursive
+  | collision t         = newState        -- Enough adjustment
+  | otherwise           = t               -- No adjustment needed
   where
-    adjustDir x'
-      | collision t = adjust t
-      | otherwise   = t
-      where
-        t = Tetris ((y, x + x'), s) w ss
+    newState = move (0, -1) t
+    (Tetris ((_, x), _) _ _) = t
 
+-- Rotates, adjusts (read adjust) and checks for collision
 rotatePiece :: Tetris -> Tetris
 rotatePiece t | collision newState  = t
               | otherwise           = newState
   where
     newState = adjust (rotate t)
 
+{- Combines current falling piece with well, takes new falling piece, clears
+   completed lines & checks if game is over -}
 dropNewPiece :: Tetris -> Maybe (Int, Tetris)
 dropNewPiece (Tetris p w (s:ss))
-  | overlaps newWell (place newPiece) = Nothing
-  | otherwise                         = Just (n, newState)
+  | collision newState  = Nothing             -- Game over
+  | otherwise           = Just (n, newState)
   where
     newState      = Tetris newPiece newWell ss
     newPiece      = (startPosition, s)
-    (n, newWell)  = clearLines $ combine (place p) w
+    (n, newWell)  = clearLines $ combine (place p) w -- n: nr. of cleared lines
 
+-- Removes (& counts) full lines and adds same amount of (empty) lines on top
 clearLines :: Shape -> (Int, Shape)
-clearLines s = (score, Shape (newRows ++ remainder)) where
-  newRows                 = rows $ emptyShape (score, wellWidth)
-  score                   = length completed
-  (completed, remainder)  = partition isComplete $ rows s
-  isComplete row          = and [isJust sq | sq <- row]
+clearLines s = (score, shiftShapeTop score (Shape remainder)) where
+  score      = wellHeight - length remainder      -- Count
+  remainder  = filter (not . isComplete) $ rows s -- Remove
+  isComplete = all isJust
